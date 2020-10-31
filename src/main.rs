@@ -92,9 +92,9 @@ fn block_scoping() {
     let x = "out";
     {
         let x = "inside";
-        println!("{}", x);
+        println!("from the {}", x);
     }
-    println!("{}", x);
+    println!("from the {}", x);
 }
 
 fn blocks_are_expressions() {
@@ -146,10 +146,19 @@ fn expressions() {
 }
 
 fn structures() {
-    struct Person { name: String, location: String }
+    struct Person {
+        name: String,
+        location: String,
+    }
 
-    let p1 = Person { name: String::from("Bob"), location: String::from("SF") };
-    let _p2 = Person { name: String::from("Jane"), location: String::from("Portland") };
+    let p1 = Person {
+        name: String::from("Bob"),
+        location: String::from("SF"),
+    };
+    let _p2 = Person {
+        name: String::from("Jane"),
+        location: String::from("Portland"),
+    };
     let p3 = Person { ..p1 }; // dot-dot for merging non-overlapping fields
 
     // destructuring
@@ -166,8 +175,14 @@ fn let_patterns_if_expressions() {
     }
 
     fn main() {
-        let one = Number { odd: true, value: 1 };
-        let two = Number { odd: false, value: 2 };
+        let one = Number {
+            odd: true,
+            value: 1,
+        };
+        let two = Number {
+            odd: false,
+            value: 2,
+        };
         print_number(one);
         print_number(two);
     }
@@ -196,8 +211,14 @@ fn match_arms_are_patterns() {
         }
     }
 
-    let one = Number { odd: true, value: 1 };
-    let two = Number { odd: false, value: 2 };
+    let one = Number {
+        odd: true,
+        value: 1,
+    };
+    let two = Number {
+        odd: false,
+        value: 2,
+    };
     print_number(one);
     print_number(two);
 }
@@ -208,7 +229,10 @@ fn mutable_variable_bindings() {
         value: i32,
     }
 
-    let mut n = Number { odd: true, value: 17 };
+    let mut n = Number {
+        odd: true,
+        value: 17,
+    };
     n.value = 18;
     n.odd = false;
 }
@@ -234,7 +258,10 @@ fn traits_are_sharable_interfaces() {
         }
     }
 
-    let num = Number { odd: true, value: -55 };
+    let num = Number {
+        odd: true,
+        value: -55,
+    };
     print!("the number {} | ", num.value);
     println!("strictly negative? {}", num.is_strictly_negative());
 
@@ -255,11 +282,17 @@ fn traits_are_sharable_interfaces() {
         type Output = Self; // `Self` means the type `Number` here
 
         fn neg(self) -> Self {
-            Number { value: -self.value, odd: self.odd }
+            Number {
+                value: -self.value,
+                odd: self.odd,
+            }
         }
     }
 
-    let m = Number { odd: true, value: 987 };
+    let m = Number {
+        odd: true,
+        value: 987,
+    };
     let n = -m; // this is only possible because we implemented the `Neg` trait
     println!("{}", n.value); // -987
 }
@@ -290,14 +323,20 @@ fn trait_markers() {
         println!("{} number {}", if x.odd { "odd" } else { "even" }, x.value);
     }
 
-    let x = Number { odd: true, value: 51 };
+    let x = Number {
+        odd: true,
+        value: 51,
+    };
     print_number(x); // `n` is moved (owned now by print_number)
-    // print_number(x); // this doesn't work because the value has been moved
+                     // print_number(x); // this doesn't work because the value has been moved
 
     fn print_number_ref(x: &Number) {
         println!("{} number {}", if x.odd { "odd" } else { "even" }, x.value);
     }
-    let y = Number { odd: false, value: 52 };
+    let y = Number {
+        odd: false,
+        value: 52,
+    };
     print_number_ref(&y); // `y` is borrowed for the time of the call
     print_number_ref(&y); // `y` is borrowed again
 
@@ -310,7 +349,10 @@ fn trait_markers() {
         println!("{} number {}", if n.odd { "odd" } else { "even" }, n.value);
     }
 
-    let mut z = Number { odd: true, value: 51 };
+    let mut z = Number {
+        odd: true,
+        value: 51,
+    };
     print_num(&z);
     invert(&mut z); // `n` is borrowed mutably - everything is explicit
     print_num(&z);
@@ -323,7 +365,10 @@ fn trait_markers() {
     }
 
     // when invoking trait methods, the receiver is borrowed implicitly
-    let n = Number { odd: true, value: 51 };
+    let n = Number {
+        odd: true,
+        value: 51,
+    };
     let mut m = n.clone();
     m.value += 100;
     print_num(&n);
@@ -343,11 +388,14 @@ fn trait_markers() {
     // `derive` attribute
     #[derive(Clone, Copy)]
     #[allow(dead_code)]
-    struct Number2 { odd: bool, value: i32 }
+    struct Number2 {
+        odd: bool,
+        value: i32,
+    }
 }
 
 fn generics() {
-    use std::fmt::{Display, Debug};
+    use std::fmt::{Debug, Display};
 
     #[allow(dead_code)]
     fn foobar<T>(_arg: T) {
@@ -370,7 +418,7 @@ fn generics() {
     #[allow(dead_code)]
     fn print2<T>(value: T)
     where
-        T: Display + Debug
+        T: Display + Debug,
     {
         println!("value = {}", value);
     }
@@ -381,7 +429,12 @@ fn generics() {
     where
         T: Debug + PartialEq,
     {
-        println!("{:?} {} {:?}", left, if left == right { "==" } else { "!=" }, right);
+        println!(
+            "{:?} {} {:?}",
+            left,
+            if left == right { "==" } else { "!=" },
+            right
+        );
     }
 
     compare("tea", "coffee");
