@@ -26,6 +26,7 @@ fn main() {
     panics();
     enums();
     references_have_lifetimes();
+    owned_unowned();
 }
 
 fn let_variable_bindings() {
@@ -594,7 +595,7 @@ fn references_have_lifetimes() {
     // - all functions that take references are generic
     // - lifetimes are generic parameters
 
-    // elided (non-named) lifetimes
+    // elided (non-named) lifetimes (omitted)
     #[allow(dead_code)]
     fn print1(_x: &i32) {}
 
@@ -626,4 +627,86 @@ fn references_have_lifetimes() {
     let z: i32 = 99;
     let _z_ref = NumRef { x: &z };
     // `z_ref` cannot outlive `z`, etc.
+
+    // same as above using a function
+    fn as_num_ref<'a>(x: &'a i32) -> NumRef<'a> {
+        NumRef { x: &x }
+    }
+
+    let a: i32 = 99;
+    let _a_ref = as_num_ref(&a);
+    // `a_ref` cannot outlive `a`, etc.
+
+    fn as_num_ref_elided(x: &i32) -> NumRef<'_> {
+        NumRef { x: &x }
+    }
+
+    let b: i32 = 99;
+    let _b_ref = as_num_ref_elided(&b);
+    // `b_ref` cannot outlive `b`, etc.
+
+    // NOTE: `impl` can can be generice over lifetimes, too
+    impl<'a> NumRef<'a> {
+        fn as_i32_ref(&'a self) -> &'a i32 {
+            self.x
+        }
+    }
+
+    let c: i32 = 99;
+    let c_num_ref = NumRef { x: &c };
+    let _c_i32_ref = c_num_ref.as_i32_ref();
+    // neither ref can outlive `c`
+
+    // NOTE: we can do elision ("to elide") in the `impl` as well
+    impl<'a> NumRef<'a> {
+        #[allow(dead_code)]
+        fn as_i32_ref_elided(&self) -> &i32 {
+            self.x
+        }
+    }
+
+    // NOTE: we can elide harder if we never need the name
+    impl NumRef<'_> {
+        #[allow(dead_code)]
+        fn as_i32_ref_hard_elision(&self) -> &i32 {
+            self.x
+        }
+    }
+
+    // NOTE: special lifetime `'static` that is valid for the entire program's lifetime
+
+    // string literals are static
+    #[allow(dead_code)]
+    struct Person {
+        name: &'static str,
+    }
+
+    let _p = Person { name: "foobar" };
+
+    // **owned** strings are not static
+    let _name = format!("foo{}", "bar"); // dynamic string
+    // let _p2 = Person { name: &name };
+    // error: `name` does not live long enough
+
+    // NOTE: to store a non-`'static` string in `Person`, it needs to be:
+    //
+    // 1. generic over a lifetime
+    #[allow(dead_code)]
+    struct Person2<'a> {
+        name: &'a str,
+    }
+
+    let name = format!("foo{}", "bar");
+    let _p = Person2 { name: &name };
+    //
+    // 2. take owneship of the string
+    #[allow(dead_code)]
+    struct Person3 {
+        name: String,
+    }
+
+    let name = format!("foo{}", "bar");
+    let _p2 = Person3 { name }; // using shorthand syntax when variable and field names match
 }
+
+fn owned_unowned() {}
