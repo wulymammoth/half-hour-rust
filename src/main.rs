@@ -21,6 +21,11 @@ fn main() {
     trait_markers();
     generics();
     turbofish();
+    structs_can_be_generic();
+    macros();
+    panics();
+    enums();
+    references_have_lifetimes();
 }
 
 fn let_variable_bindings() {
@@ -447,4 +452,178 @@ fn turbofish() {
     use std::any::type_name;
     println!("{}", type_name::<i32>()); // prints "i32"
     println!("{}", type_name::<(f64, char)>()); // prints "(f64, char)"
+}
+
+fn structs_can_be_generic() {
+    #[allow(dead_code)]
+    struct Pair<T> {
+        a: T,
+        b: T,
+    }
+
+    fn print_type_name<T>(_val: &T) {
+        println!("{}", std::any::type_name::<T>());
+    }
+
+    let p1 = Pair { a: 3, b: 9 };
+    let p2 = Pair { a: true, b: false };
+    print_type_name(&p1); // prints "Pair<i32>"
+    print_type_name(&p2); // prints "Pair<bool>"
+
+    // heap-allocated array
+    let mut v1 = Vec::new();
+    v1.push(1);
+    let mut v2 = Vec::new();
+    v2.push(false);
+    print_type_name(&v1); // prints "Vec<i32>"
+    print_type_name(&v2); // prints "Vec<bool>"
+
+    // macro (for "vec literals")
+    let v3 = vec![1, 2, 3];
+    let v4 = vec![true, false, true];
+    print_type_name(&v3); // prints "Vec<i32>"
+    print_type_name(&v4); // prints "Vec<bool>"
+}
+
+fn macros() {
+    // this is...
+    println!("{}", "Hello there!");
+    // roughly the same as...
+    use std::io::{self, Write};
+    io::stdout().lock().write_all(b"Hello there!\n").unwrap();
+
+    // panic is a "violent stop execution"
+    // stops execution spitting out the line number in the source code
+    // panic!("This panics!");
+}
+
+fn panics() {
+    // some methods also panic
+    // option type can contain someting or nothing
+    // if .unwrap() is invoked on it and it doesn't contain something
+    let o1: Option<i32> = Some(128);
+    o1.unwrap(); // this is good
+
+    let _o2: Option<i32> = None;
+    //o2.unwrap(); // this panics
+}
+
+fn enums() {
+    println!("foobar");
+    enum OptionX<T> {
+        None,
+        Some(T),
+    }
+
+    impl<T> OptionX<T> {
+        fn unwrap(self) -> T {
+            // enum variants may be used in patterns
+            match self {
+                Self::Some(t) => t,
+                Self::None => panic!(".unwrap() called on None option"),
+            }
+        }
+    }
+
+    use OptionX::{None, Some};
+
+    let o1: OptionX<i32> = Some(128);
+    o1.unwrap();
+
+    let _o2: OptionX<i32> = None;
+    // o2.unwrap(); // this panics
+
+    // `Result` is also an enum that contains someting or error
+    #[allow(dead_code)]
+    enum ResultX<T, E> {
+        Ok(T),
+        Err(E),
+    }
+}
+
+fn references_have_lifetimes() {
+    // `x` doesn't exist yet
+    {
+        let x = 42; // `x` starts existing
+        let x_ref = &x; // `x_ref` starts existing - it borrows `x`
+        println!("x_ref = {}", x_ref);
+        // `x_ref` stops existing
+        // `x` stops existing
+    } // dropped
+      // `x` no longer exists
+
+    // NOTE: the lifetime of a reference cannot exceed the lifetime of the variable binding that it
+    // borrows
+    //let x_ref = {
+    //let x = 42;
+    //&x // "borrowed value does not live long enough"
+    //};
+    //println!("x_ref = {}", x_ref);
+    // error: `x` does not live long enough
+
+    // NOTE: a variable binding can be immutably borrowed multiple times
+    let x = 42;
+    let x_ref1 = &x;
+    let x_ref2 = &x;
+    let x_ref3 = &x;
+    println!("ref1: {} | ref2: {} | ref3: {}", x_ref1, x_ref2, x_ref3);
+
+    // NOTE: while borrowed, a variable binding cannot be mutated
+    #[allow(unused_mut)]
+    let mut x = 42;
+    let x_ref = &x;
+    // x = 13; // cannot do this
+    println!("x_ref = {}", x_ref);
+    // error: cannot assign to `x` because it is borrowed
+
+    // NOTE: while immutably borrowed, a variable cannot be mutably borrowed
+    #[allow(unused_mut)]
+    let mut y = 42;
+    let y_ref1 = &y;
+    // let y_ref2 = &mut y; // cannot do this
+    // error: cannot borrow `y` as mutable because it is also borrowed as immutable
+    println!("y_ref1 = {}", y_ref1);
+
+    // NOTE: references in function arguments also have lifetimes
+    #[allow(dead_code)]
+    fn print(_x: &i32) {
+        // `x` is borrowed (from the outside) for the entire time this function is called
+    }
+
+    // NOTE: functions with reference arguments can be called with borrows of different lifetimes
+    // - all functions that take references are generic
+    // - lifetimes are generic parameters
+
+    // elided (non-named) lifetimes
+    #[allow(dead_code)]
+    fn print1(_x: &i32) {}
+
+    // named lifetimes
+    #[allow(dead_code)]
+    fn print2<'a>(_x: &'a i32) {}
+
+    // NOTE: this permits the return of references whose lifetime depends on the lifetime of the
+    // arguments
+    struct Number {
+        value: i32,
+    }
+
+    fn number_value<'a>(num: &'a Number) -> &'a i32 {
+        &num.value
+    }
+
+    let n = Number { value: 47 };
+    let _v = number_value(&n);
+    // `v` borrows `n` (immutably), thus: `v` cannot outlive `n`
+    // // while `v` exists, `n` cannot be mutably borrowed, mutated, moved, etc.
+
+    // NOTE: structs can also be generic over lifetimes allowing them to hold references
+    #[allow(dead_code)]
+    struct NumRef<'a> {
+        x: &'a i32,
+    }
+
+    let z: i32 = 99;
+    let _z_ref = NumRef { x: &z };
+    // `z_ref` cannot outlive `z`, etc.
 }
